@@ -88,7 +88,7 @@ int MK_PushMove(MK_Context *ctx, int x, int y) {
 
 int MK_HandleEvent(MK_Context *ctx, int type, void *data) {
     assert_return_err_misc(type);
-    printf("Type: %d\n", type);
+    printf("type: %d", type);
     switch (type) {
         case MK_EVENT_QUIT: {
             ctx->quit = true;
@@ -97,12 +97,13 @@ int MK_HandleEvent(MK_Context *ctx, int type, void *data) {
         case MK_EVENT_MOVE: {
             MK_Event_Move *move = (MK_Event_Move *)data;
             assert_return_err_misc(move);
-            printf("  Move: %d %d\n", move->x, move->y);
+            printf(" move: %d %d", move->x, move->y);
             ctx->x += move->x * 5;
             ctx->y += move->y * 5;
             break;
         }
     }
+    putchar('\n');
     return MK_SUCCESS;
 }
 
