@@ -18,7 +18,7 @@ void MK_LogOutputFunction(void *userdata, int category, SDL_LogPriority priority
 
 struct MK_MemArena {
     size_t offset;           // bytes used
-    char data[1024 * 1024];  // 1 MB
+    char data[1024 * 1024];  // 1 MB hard-coded buffer (may want to make this dynamically grow)
 };
 
 void *MK_MemArena_Alloc(MK_MemArena *arena, size_t bytes) {
