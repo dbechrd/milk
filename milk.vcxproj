@@ -109,9 +109,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\mk_app.cpp" />
+    <ClCompile Include="src\mk_event.cpp" />
+    <ClCompile Include="src\mk_game.cpp" />
+    <ClCompile Include="src\mk_log.cpp" />
+    <ClCompile Include="src\mk_memarena.cpp" />
+    <ClCompile Include="src\mk_render.cpp" />
+    <ClCompile Include="src\mk_universe.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\helpers.h" />
+    <ClInclude Include="src\mk_app.h" />
+    <ClInclude Include="src\mk_context.h" />
+    <ClInclude Include="src\mk_event.h" />
+    <ClInclude Include="src\mk_common.h" />
+    <ClInclude Include="src\mk_game.h" />
+    <ClInclude Include="src\mk_log.h" />
+    <ClInclude Include="src\mk_memarena.h" />
+    <ClInclude Include="src\mk_render.h" />
+    <ClInclude Include="src\mk_universe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
