@@ -10,7 +10,7 @@ struct MK_Game {
 };
 
 int MK_Game_Init           (MK_Game *game);
-int MK_Game_PlayerInit     (MK_Game *game, int player_slot);
+int MK_Game_PlayerInit     (MK_Game *game, int player_slot, SDL_Color color, SDL_Point position);
 int MK_Game_PlayerGetPos   (MK_Game *game, int player_slot, SDL_Point *position);
 int MK_Game_PlayerSetPos   (MK_Game *game, int player_slot, const SDL_Point position);
 int MK_Game_PlayerGetColor (MK_Game *game, int player_slot, SDL_Color *col);

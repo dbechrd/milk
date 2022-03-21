@@ -6,23 +6,17 @@
     assert_return_guard(player_slot < MK_GAME_PLAYERS_MAX);
 
 int MK_Game_Init(MK_Game *game) {
-    // Player 1
-    succeed_or_return_expr(MK_Game_PlayerInit(game, 0));
-    succeed_or_return_expr(MK_Game_PlayerSetColor(game, 0, { 255, 0, 0, 255 }));
-    succeed_or_return_expr(MK_Game_PlayerSetPos(game, 0, { 100, 100 }));
-
-    // Player 2
-    succeed_or_return_expr(MK_Game_PlayerInit(game, 1));
-    succeed_or_return_expr(MK_Game_PlayerSetColor(game, 1, { 0, 255, 0, 255 }));
-    succeed_or_return_expr(MK_Game_PlayerSetPos(game, 1, { 500, 100 }));
-
+    succeed_or_return_expr(MK_Game_PlayerInit(game, 0, { 255, 0, 0, 255 }, { 100, 100 }));
+    succeed_or_return_expr(MK_Game_PlayerInit(game, 1, { 0, 255, 0, 255 }, { 500, 100 }));
     return MK_SUCCESS;
 }
 
-int MK_Game_PlayerInit(MK_Game *game, int player_slot) {
+int MK_Game_PlayerInit(MK_Game *game, int player_slot, SDL_Color color, SDL_Point position) {
     game_guard();
 
     succeed_or_return_expr(MK_Universe_Create(&game->universe, &game->player_ids[player_slot]));
+    succeed_or_return_expr(MK_Game_PlayerSetColor(game, player_slot, color));
+    succeed_or_return_expr(MK_Game_PlayerSetPos(game, player_slot, position));
     return MK_SUCCESS;
 }
 
@@ -67,10 +61,10 @@ int MK_Game_PlayerSetPos(MK_Game *game, int player_slot, const SDL_Point positio
 int MK_Game_PlayerMove(MK_Game *game, int player_slot, int x, int y) {
     game_guard();
 
-    SDL_Point pos{};
-    succeed_or_return_expr(MK_Game_PlayerGetPos(game, game->player_ids[player_slot], &pos));
-    pos.x += x;
-    pos.y += y;
-    succeed_or_return_expr(MK_Game_PlayerSetPos(game, game->player_ids[player_slot], pos));
+    MK_Attr_Position pos{};
+    succeed_or_return_expr(MK_Universe_GetPos(&game->universe, game->player_ids[player_slot], &pos));
+    pos.position.x += x;
+    pos.position.y += y;
+    succeed_or_return_expr(MK_Universe_SetPos(&game->universe, game->player_ids[player_slot], &pos));
     return MK_SUCCESS;
 }
