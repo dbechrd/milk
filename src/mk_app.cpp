@@ -10,7 +10,7 @@ int MK_App_Init(MK_Context **ctxRef) {
 
     *ctxRef = (MK_Context *)calloc(1, sizeof(**ctxRef));
     MK_Context *ctx = *ctxRef;
-    assert_return_err(ctx, MK_ERR_BAD_ALLOC);
+    assert_return_err(ctx, "Failed to allocate main app context", MK_ERR_BAD_ALLOC);
 
     SDL_LogSetOutputFunction(MK_LogOutputFunction, 0);
     succeed_or_return_expr_sdl(SDL_Init(SDL_INIT_EVERYTHING));

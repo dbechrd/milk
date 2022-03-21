@@ -24,7 +24,7 @@ int MK_PushQuit() {
 
 int MK_PushMove(MK_Context *ctx, int x, int y) {
     MK_Event_Move *move = (MK_Event_Move *)MK_MemArena_Alloc(ctx->temp, sizeof(*move));
-    assert_return_err(move, MK_ERR_BAD_ALLOC);
+    assert_return_err(move, "Failed to allocate move event", MK_ERR_BAD_ALLOC);
     move->x = x;
     move->y = y;
     succeed_or_return_expr(MK_PushEvent(MK_EVENT_MOVE, move));

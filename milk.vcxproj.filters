@@ -9,6 +9,7 @@
     <ClCompile Include="src\mk_render.cpp" />
     <ClCompile Include="src\mk_universe.cpp" />
     <ClCompile Include="src\mk_game.cpp" />
+    <ClCompile Include="src\mk_common.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\mk_app.h" />

@@ -11,7 +11,8 @@ int MK_Universe_Create(MK_Universe *universe, int *id) {
         }
     }
 
-    return MK_ERR_BAD_ALLOC;
+    assert_return_err(!"universe full", "Failed to allocate entity", MK_ERR_BAD_ALLOC);
+    return MK_SUCCESS;
 }
 
 int MK_Universe_Move(MK_Universe *universe, int id, int x, int y) {

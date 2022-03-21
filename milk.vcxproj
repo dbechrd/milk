@@ -110,6 +110,7 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mk_app.cpp" />
+    <ClCompile Include="src\mk_common.cpp" />
     <ClCompile Include="src\mk_event.cpp" />
     <ClCompile Include="src\mk_game.cpp" />
     <ClCompile Include="src\mk_log.cpp" />
