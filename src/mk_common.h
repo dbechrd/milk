@@ -44,7 +44,7 @@ enum {
 // If assert fails, log and return specified error code from caller
 #define assert_return_err(expr, err) assert_return__generator((expr), "assert failed", return (err))
 
-// If assert fails, log and return specified error code from caller
+// If assert fails, log and return MK_ERR_GUARD_COND from caller
 #define assert_return_guard(expr) assert_return__generator((expr), "guard condition failed", return MK_ERR_GUARD_COND)
 
 // If assert fails, log (including SDL error message) and return MK_ERR_SDL from caller
@@ -60,8 +60,8 @@ enum {
         } \
     } while(0)
 
-// Fails if expr returns a negative error code
+// If expr returns a negative error code, log and return error code from caller
 #define succeed_or_return_expr(expr) succeed_or_return__generator((expr), "assert failed")
 
-// Fails if expr returns a negative error code and logs an SDL error
+// If expr returns a negative error code, log (including SDL error message) and return error code from caller
 #define succeed_or_return_expr_sdl(expr) succeed_or_return__generator((expr), SDL_GetError())
