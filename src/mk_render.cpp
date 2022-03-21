@@ -7,11 +7,17 @@ int MK_DrawScene(MK_Context *ctx) {
     succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 0, 0, 0, 255));
     succeed_or_return_expr_sdl(SDL_RenderClear(ctx->rndr));
 
-    MK_Attr_Position pos = { 0 };
-    succeed_or_return_expr(MK_Game_PlayerGetPos(&ctx->game, &pos));
-    SDL_Rect rect{ pos.x, pos.y, 20, 20 };
-    succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 255, 0, 0, 255));
-    succeed_or_return_expr_sdl(SDL_RenderFillRect(ctx->rndr, &rect));
+    for (int i = 0; i < MK_GAME_PLAYERS_MAX; i++) {
+        if (ctx->game.universe.exists[i]) {
+            SDL_Point pos{};
+            succeed_or_return_expr(MK_Game_PlayerGetPos(&ctx->game, i, &pos));
+            SDL_Color col{};
+            succeed_or_return_expr(MK_Game_PlayerGetColor(&ctx->game, i, &col));
+            SDL_Rect rect{ pos.x, pos.y, 20, 20 };
+            succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, col.r, col.g, col.b, col.a));
+            succeed_or_return_expr_sdl(SDL_RenderFillRect(ctx->rndr, &rect));
+        }
+    }
 
     SDL_RenderPresent(ctx->rndr);
     return MK_SUCCESS;

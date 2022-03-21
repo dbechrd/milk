@@ -1,5 +1,11 @@
 #include "mk_universe.h"
 
+#define universe_guard() \
+    assert_return_guard(universe); \
+    assert_return_guard(id >= 0); \
+    assert_return_guard(id < MK_ENTITIES_MAX); \
+    assert_return_guard(universe->exists[id]);
+
 int MK_Universe_Create(MK_Universe *universe, int *id) {
     assert_return_guard(id);
 
@@ -15,14 +21,40 @@ int MK_Universe_Create(MK_Universe *universe, int *id) {
     return MK_SUCCESS;
 }
 
-int MK_Universe_Move(MK_Universe *universe, int id, int x, int y) {
-    assert_return_guard(universe);
-    assert_return_guard(id >= 0);
-    assert_return_guard(id < MK_ENTITIES_MAX);
-    assert_return_guard(universe->exists[id]);
+int MK_Universe_GetPos(MK_Universe *universe, int id, MK_Attr_Position *position) {
+    universe_guard();
+    assert_return_guard(position);
 
     MK_Attr_Position *pos = &universe->position[id];
-    pos->x += x;
-    pos->y += y;
+    *position = *pos;
     return MK_SUCCESS;
 }
+
+int MK_Universe_SetPos(MK_Universe *universe, int id, const MK_Attr_Position *position) {
+    universe_guard();
+    assert_return_guard(position);
+
+    MK_Attr_Position *pos = &universe->position[id];
+    *pos = *position;
+    return MK_SUCCESS;
+}
+
+int MK_Universe_GetColor(MK_Universe *universe, int id, MK_Attr_Color *color) {
+    universe_guard();
+    assert_return_guard(color);
+
+    MK_Attr_Color *col = &universe->color[id];
+    *color = *col;
+    return MK_SUCCESS;
+}
+
+int MK_Universe_SetColor(MK_Universe *universe, int id, const MK_Attr_Color *color) {
+    universe_guard();
+    assert_return_guard(color);
+
+    MK_Attr_Color *col = &universe->color[id];
+    *col = *color;
+    return MK_SUCCESS;
+}
+
+#undef universe_guard

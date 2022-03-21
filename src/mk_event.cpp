@@ -43,7 +43,7 @@ int MK_HandleEvent(MK_Context *ctx, int type, void *data) {
             MK_Event_Move *move = (MK_Event_Move *)data;
             assert_return_guard(move);
             SDL_LogVerbose(MK_LOG_EVENT, " move: %d %d", move->x, move->y);
-            MK_Game_PlayerMove(&ctx->game, move->x * 5, move->y * 5);
+            MK_Game_PlayerMove(&ctx->game, 0, move->x * 5, move->y * 5);
             break;
         }
     }
