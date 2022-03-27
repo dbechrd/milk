@@ -2,6 +2,7 @@
 #include "mk_event.h"
 #include "mk_game.h"
 #include "mk_memarena.h"
+#include <stdio.h>
 
 int MK_RegisterCustomEvents() {
     assert_return_sdl(SDL_RegisterEvents(MK_EVENT_COUNT) != (Uint32)-1);
@@ -31,6 +32,11 @@ int MK_PushMove(MK_Context *ctx, int x, int y) {
     return MK_SUCCESS;
 }
 
+int MK_PushDebugToggleCollisionResolution() {
+    succeed_or_return_expr(MK_PushEvent(MK_EVENT_DBG_TOGGLE_COLLISION_RESOLUTION, 0));
+    return MK_SUCCESS;
+}
+
 int MK_HandleEvent(MK_Context *ctx, int type, void *data) {
     assert_return_guard(type);
     SDL_LogVerbose(MK_LOG_EVENT, "type: %d", type);
@@ -42,8 +48,24 @@ int MK_HandleEvent(MK_Context *ctx, int type, void *data) {
         case MK_EVENT_MOVE: {
             MK_Event_Move *move = (MK_Event_Move *)data;
             assert_return_guard(move);
-            SDL_LogVerbose(MK_LOG_EVENT, " move: %d %d", move->x, move->y);
-            MK_Game_PlayerMove(&ctx->game, 0, move->x * 5, move->y * 5);
+            SDL_LogVerbose(MK_LOG_EVENT, " move: %f %f", move->x, move->y);
+
+            // TODO(dlb): Move this to anywhere else.
+            float dx = (float)move->x;
+            float dy = (float)move->y;
+            float invLength = 1.0f / sqrtf((dx * dx) + (dy * dy));
+            if (dx && dy) {
+                dx *= invLength;
+                dy *= invLength;
+            }
+            float speed = 10.0f;
+            dx *= speed;
+            dy *= speed;
+            MK_Game_PlayerMove(&ctx->game, 0, dx, dy);
+            break;
+        }
+        case MK_EVENT_DBG_TOGGLE_COLLISION_RESOLUTION: {
+            ctx->game.debug_no_collision_resolution = !ctx->game.debug_no_collision_resolution;
             break;
         }
     }
@@ -74,6 +96,10 @@ int MK_PollSDLEvents(MK_Context *ctx) {
                 switch (evt.key.keysym.scancode) {
                     case SDL_SCANCODE_ESCAPE: {
                         succeed_or_return_expr(MK_PushQuit());
+                        break;
+                    }
+                    case SDL_SCANCODE_P: {
+                        succeed_or_return_expr(MK_PushDebugToggleCollisionResolution());
                         break;
                     }
                 }

@@ -4,9 +4,15 @@
 struct MK_Context;
 
 enum {
+    // Zero reserved for default alloc, unsued
     MK_EVENT_INVALID,
+
+    // App events
     MK_EVENT_QUIT,
     MK_EVENT_MOVE,
+
+    // Debug events
+    MK_EVENT_DBG_TOGGLE_COLLISION_RESOLUTION,
 
     MK_EVENT_COUNT
 };

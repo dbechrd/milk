@@ -8,6 +8,9 @@
 #include <SDL2/SDL.h>
 
 #define mk_unused(x) ((void)x)
+#define mk_min(x, y) ((x) <= (y) ? (x) : (y))
+#define mk_max(x, y) ((x) >= (y) ? (x) : (y))
+#define mk_array_count(a) (sizeof(a)/sizeof((a)[0]))
 
 // Application-specific SDL log categories
 enum {
@@ -23,14 +26,12 @@ enum {
     MK_ERR_BAD_ALLOC  = -3,
 };
 
-
 const char *mk_err_string(int err);
 
 // Macro generator, not meant to be called directly from user code
 #define assert_return__generator(expr, msg, ret) \
     do { \
         if (!(expr)) { \
-            SDL_LogCritical(MK_LOG_ASSERT, "[MK_ASSERT] %s:%d\n  %s\n  %s\n", __FILE__, __LINE__, #expr, (msg)); \
             ret; \
         } \
     } while(0)
@@ -44,14 +45,23 @@ const char *mk_err_string(int err);
 // If assert fails, log and return false from caller
 #define assert_return_false(expr) assert_return__generator(expr, "", return false)
 
+// Macro generator, not meant to be called directly from user code
+#define assert_return_log__generator(expr, msg, ret) \
+    do { \
+        if (!(expr)) { \
+            SDL_LogCritical(MK_LOG_ASSERT, "[MK_ASSERT] %s:%d\n  %s\n  %s\n", __FILE__, __LINE__, #expr, (msg)); \
+            ret; \
+        } \
+    } while(0)
+
 // If assert fails, log and return specified error code from caller
-#define assert_return_err(expr, msg, err) assert_return__generator(expr, msg, return (err))
+#define assert_return_err(expr, msg, err) assert_return_log__generator(expr, msg, return (err))
 
 // If assert fails, log and return MK_ERR_GUARD_COND from caller
-#define assert_return_guard(expr) assert_return__generator(expr, "guard condition", return MK_ERR_GUARD_COND)
+#define assert_return_guard(expr) assert_return_log__generator(expr, "guard condition", return MK_ERR_GUARD_COND)
 
 // If assert fails, log (including SDL error message) and return MK_ERR_SDL from caller
-#define assert_return_sdl(expr) assert_return__generator(expr, SDL_GetError(), return MK_ERR_SDL)
+#define assert_return_sdl(expr) assert_return_log__generator(expr, SDL_GetError(), return MK_ERR_SDL)
 
 // Macro generator, not meant to be called directly from user code
 #define succeed_or_return__generator(expr, msg) \
