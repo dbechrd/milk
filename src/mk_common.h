@@ -6,6 +6,8 @@
 #pragma warning(disable:5045)  // "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
 
 #include <SDL2/SDL.h>
+#include <cinttypes>
+#include <intrin.h>
 
 #define mk_unused(x) ((void)x)
 #define mk_min(x, y) ((x) <= (y) ? (x) : (y))
@@ -29,7 +31,11 @@ enum {
 const char *mk_err_string(int err);
 
 // Macro generator, not meant to be called directly from user code
-#define assert_return__generator(expr, msg, ret) \
+#define mk_log_info(msg, ...) \
+    SDL_Log("[mk_log_info:%" PRIu64 "] %s:%d\n  " msg "\n", SDL_GetTicks64(), __FILE__, __LINE__, __VA_ARGS__);
+
+// Macro generator, not meant to be called directly from user code
+#define assert_return__generator(expr, ret) \
     do { \
         if (!(expr)) { \
             ret; \
@@ -37,19 +43,23 @@ const char *mk_err_string(int err);
     } while(0)
 
 // If assert fails, log and return from caller
-#define assert_return(expr) assert_return__generator(expr, "", return)
+#define assert_return(expr) assert_return__generator(expr, return)
 
 // If assert fails, log and return zero from caller
-#define assert_return_zero(expr) assert_return__generator(expr, "", return 0)
+#define assert_return_zero(expr) assert_return__generator(expr, return 0)
 
 // If assert fails, log and return false from caller
-#define assert_return_false(expr) assert_return__generator(expr, "", return false)
+#define assert_return_false(expr) assert_return__generator(expr, return false)
+
+// If assert fails, log and return from caller
+#define assert_return_value(expr, value) assert_return__generator(expr, return value)
 
 // Macro generator, not meant to be called directly from user code
 #define assert_return_log__generator(expr, msg, ret) \
     do { \
         if (!(expr)) { \
             SDL_LogCritical(MK_LOG_ASSERT, "[MK_ASSERT] %s:%d\n  %s\n  %s\n", __FILE__, __LINE__, #expr, (msg)); \
+            __debugbreak(); \
             ret; \
         } \
     } while(0)
