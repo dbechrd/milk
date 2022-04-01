@@ -1,9 +1,5 @@
 #include "mk_game.h"
 
-#define game_guard() \
-    assert_return_guard(player_slot >= 0); \
-    assert_return_guard(player_slot < MK_GAME_PLAYERS_MAX);
-
 int MK_Game_Init(MK_Game *game) {
 #if _DEBUG
     //game->debug_no_collision_resolution = true;
@@ -23,30 +19,20 @@ int MK_Game_Init(MK_Game *game) {
     return MK_SUCCESS;
 }
 
-int MK_Game_PlayerInit(MK_Game *game, int player_slot, MK_Vec2 position, float w, float h, uint8_t color_id, uint8_t substance_id) {
-    game_guard();
-
+int MK_Game_PlayerInit(MK_Game *game, MK_PlayerSlot player_slot, MK_Vec2 position, float w, float h, uint8_t color_id, uint8_t substance_id) {
     uint16_t flags = MK_E_COLOR | MK_E_SUBSTANCE | MK_E_POSITION | MK_E_SIZE | MK_E_MASS | MK_E_HEALTH;
     succeed_or_return_expr(MK_Universe_Create(&game->universe, &game->player_ids[player_slot], flags));
 
-    uint8_t   *e_col_id   = MK_Universe_ColorId(&game->universe, game->player_ids[player_slot]);
-    uint8_t   *e_subst_id = MK_Universe_SubstanceId(&game->universe, game->player_ids[player_slot]);
-    MK_Vec2   *e_pos      = MK_Universe_Position(&game->universe, game->player_ids[player_slot]);
-    MK_Vec2   *e_size     = MK_Universe_Size(&game->universe, game->player_ids[player_slot]);
-    MK_Mass   *e_mass     = MK_Universe_Mass(&game->universe, game->player_ids[player_slot]);
-    MK_Health *e_health   = MK_Universe_Health(&game->universe, game->player_ids[player_slot]);
-    assert_return_guard(e_col_id);
-    assert_return_guard(e_subst_id);
-    assert_return_guard(e_pos);
-    assert_return_guard(e_size);
-    assert_return_guard(e_mass);
-    assert_return_guard(e_health);
+    MK_Substance *substance = &game->universe.c_substance[substance_id];;
 
-    *e_col_id = color_id;
-    *e_subst_id = substance_id;
+    MK_EntityID player_id = game->player_ids[player_slot];
+    MK_Vec2   *e_pos      = &game->universe.e_position[player_id];
+    MK_Vec2   *e_size     = &game->universe.e_size[player_id];
+    MK_Mass   *e_mass     = &game->universe.e_mass[player_id];
+    MK_Health *e_health   = &game->universe.e_health[player_id];
 
-    MK_Substance *substance = MK_Substance_Find(&game->universe, *e_subst_id);
-    assert_return_guard(substance);
+    game->universe.e_color[player_id] = color_id;
+    game->universe.e_substance[player_id] = substance_id;
 
     *e_pos = position;
     e_size->x = w;
@@ -58,11 +44,9 @@ int MK_Game_PlayerInit(MK_Game *game, int player_slot, MK_Vec2 position, float w
     return MK_SUCCESS;
 }
 
-int MK_Game_PlayerMove(MK_Game *game, int player_slot, float x, float y) {
-    game_guard();
-
-    MK_Vec2 *e_pos = MK_Universe_Position(&game->universe, game->player_ids[player_slot]);
-    assert_return_guard(e_pos);
+int MK_Game_PlayerMove(MK_Game *game, MK_PlayerSlot player_slot, float x, float y) {
+    MK_EntityID player_id = game->player_ids[player_slot];
+    MK_Vec2 *e_pos = &game->universe.e_position[player_id];
     e_pos->x += x;
     e_pos->y += y;
     return MK_SUCCESS;
@@ -75,12 +59,6 @@ struct MK_Manifold {
 
 bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1,
                    MK_Vec2 *pos2, MK_Vec2 *siz2) {
-    assert_return_false(manifold);
-    assert_return_false(pos1);
-    assert_return_false(siz1);
-    assert_return_false(pos2);
-    assert_return_false(siz2);
-
     float x_overlap = mk_min(
         (pos1->x + siz1->x) - pos2->x,
         (pos2->x + siz2->x) - pos1->x
@@ -113,28 +91,17 @@ bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1,
 int MK_Game_PositionalCorrection(MK_Game *game) {
     assert_return_zero(!game->debug_no_collision_resolution);
 
-    MK_Vec2 *e_pos1 = 0;
-    MK_Vec2 *e_siz1 = 0;
-    MK_Mass *e_mas1 = 0;
-    MK_Vec2 *e_pos2 = 0;
-    MK_Vec2 *e_siz2 = 0;
-    MK_Mass *e_mas2 = 0;
-
     for (int iter = 0; iter < MK_GAME_PHYSICS_ITERATIONS; iter++) {
-        for (int i = 0 ; i < MK_GAME_PLAYERS_MAX; i++) {
-            e_pos1 = MK_Universe_Position(&game->universe, game->player_ids[i]);
-            e_siz1 = MK_Universe_Size(&game->universe, game->player_ids[i]);
-            e_mas1 = MK_Universe_Mass(&game->universe, game->player_ids[i]);
-            if (!(e_pos1 && e_siz1 && e_mas1)) {
-                continue;
-            }
-            for (int j = i + 1; j < MK_GAME_PLAYERS_MAX; j++) {
-                e_mas2 = MK_Universe_Mass(&game->universe, game->player_ids[j]);
-                e_pos2 = MK_Universe_Position(&game->universe, game->player_ids[j]);
-                e_siz2 = MK_Universe_Size(&game->universe, game->player_ids[j]);
-                if (!(e_pos2 && e_siz2 && e_mas2)) {
-                    continue;
-                }
+        for (int i = 0 ; i < MK_PLAYERSLOT_MAX; i++) {
+            MK_EntityID player1 = game->player_ids[i];
+            MK_Vec2 *e_pos1 = &game->universe.e_position[player1];
+            MK_Vec2 *e_siz1 = &game->universe.e_size[player1];
+            MK_Mass *e_mas1 = &game->universe.e_mass[player1];
+            for (int j = i + 1; j < MK_PLAYERSLOT_MAX; j++) {
+                MK_EntityID player2 = game->player_ids[j];
+                MK_Vec2 *e_pos2 = &game->universe.e_position[player2];
+                MK_Vec2 *e_siz2 = &game->universe.e_size[player2];
+                MK_Mass *e_mas2 = &game->universe.e_mass[player2];
 
                 if (!e_mas1->invMass && !e_mas2->invMass) {
                     // both are immovable

@@ -7,7 +7,7 @@
 
 #include <SDL2/SDL.h>
 #include <cinttypes>
-#include <intrin.h>
+//#include <intrin.h>
 
 #define mk_unused(x) ((void)x)
 #define mk_min(x, y) ((x) <= (y) ? (x) : (y))
@@ -33,6 +33,16 @@ const char *mk_err_string(int err);
 // Macro generator, not meant to be called directly from user code
 #define mk_log_info(msg, ...) \
     SDL_Log("[mk_log_info:%" PRIu64 "] %s:%d\n  " msg "\n", SDL_GetTicks64(), __FILE__, __LINE__, __VA_ARGS__);
+
+// Macro generator, not meant to be called directly from user code
+#define assert_abort(expr) \
+    do { \
+        if (!(expr)) { \
+            SDL_LogCritical(MK_LOG_ASSERT, "[MK_ASSERT] %s:%d\n  %s\n", __FILE__, __LINE__, #expr); \
+            __debugbreak(); \
+            exit(-1); \
+        } \
+    } while(0)
 
 // Macro generator, not meant to be called directly from user code
 #define assert_return__generator(expr, ret) \

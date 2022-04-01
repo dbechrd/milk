@@ -1,10 +1,12 @@
 #pragma once
 #include "mk_common.h"
-#include <cstdint>
 
-#define MK_COLORS_MAX     UINT8_MAX
-#define MK_SUBSTANCES_MAX UINT8_MAX
-#define MK_ENTITIES_MAX   1024
+#define MK_COLORID_MAX     UINT8_MAX
+#define MK_SUBSTANCEID_MAX UINT8_MAX
+#define MK_ENTITYID_MAX    UINT8_MAX
+typedef uint8_t MK_ColorID;
+typedef uint8_t MK_SubstanceID;
+typedef uint8_t MK_EntityID;
 
 struct MK_Substance {
     float density;
@@ -31,43 +33,30 @@ struct MK_Health {
     int maxHealth;
 };
 
-#define MK_E_COLOR     0x0001
-#define MK_E_SUBSTANCE 0x0002
-#define MK_E_POSITION  0x0004
-#define MK_E_SIZE      0x0008
-#define MK_E_MASS      0x0010
-#define MK_E_HEALTH    0x0020
+#define MK_E_COLOR     (1 << 0)
+#define MK_E_SUBSTANCE (1 << 1)
+#define MK_E_POSITION  (1 << 2)
+#define MK_E_SIZE      (1 << 3)
+#define MK_E_MASS      (1 << 4)
+#define MK_E_HEALTH    (1 << 5)
 
 struct MK_Universe {
     // Catalog
-    bool         c_color_exists     [MK_COLORS_MAX];  // TODO: Bit map?
-    MK_Color     c_color            [MK_COLORS_MAX];
-    bool         c_substance_exists [MK_SUBSTANCES_MAX];  // TODO: Bit map?
-    MK_Substance c_substance        [MK_SUBSTANCES_MAX];
+    MK_Color     c_color            [MK_COLORID_MAX];
+    MK_Substance c_substance        [MK_SUBSTANCEID_MAX];
 
     // Atoms
-    uint16_t   e_exists    [MK_ENTITIES_MAX];  // bitmap
-    uint8_t    e_color     [MK_ENTITIES_MAX];
-    uint8_t    e_substance [MK_ENTITIES_MAX];
-    MK_Vec2    e_position  [MK_ENTITIES_MAX];
-    MK_Vec2    e_size      [MK_ENTITIES_MAX];
-    MK_Mass    e_mass      [MK_ENTITIES_MAX];
-    MK_Health  e_health    [MK_ENTITIES_MAX];
+    uint16_t       e_exists    [MK_ENTITYID_MAX];  // bitmap
+    MK_ColorID     e_color     [MK_ENTITYID_MAX];
+    MK_SubstanceID e_substance [MK_ENTITYID_MAX];
+    MK_Vec2        e_position  [MK_ENTITYID_MAX];
+    MK_Vec2        e_size      [MK_ENTITYID_MAX];
+    MK_Mass        e_mass      [MK_ENTITYID_MAX];
+    MK_Health      e_health    [MK_ENTITYID_MAX];
 };
 
-uint8_t    MK_Color_Create (MK_Universe *universe, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-MK_Color * MK_Color_Find   (MK_Universe *universe, uint8_t id);
+int MK_Universe_Init   (MK_Universe *universe);
+int MK_Universe_Create (MK_Universe *universe, MK_EntityID *id, uint16_t flags);
 
-uint8_t        MK_Substance_Create (MK_Universe *universe, float density);
-MK_Substance * MK_Substance_Find   (MK_Universe *universe, uint8_t id);
-
-int            MK_Universe_Init        (MK_Universe *universe);
-int            MK_Universe_Create      (MK_Universe *universe, int *id, uint16_t flags);
-uint8_t      * MK_Universe_ColorId     (MK_Universe *universe, int id);
-uint8_t      * MK_Universe_SubstanceId (MK_Universe *universe, int id);
-MK_Color     * MK_Universe_Color       (MK_Universe *universe, int id);
-MK_Substance * MK_Universe_Substance   (MK_Universe *universe, int id);
-MK_Vec2      * MK_Universe_Position    (MK_Universe *universe, int id);
-MK_Vec2      * MK_Universe_Size        (MK_Universe *universe, int id);
-MK_Mass      * MK_Universe_Mass        (MK_Universe *universe, int id);
-MK_Health    * MK_Universe_Health      (MK_Universe *universe, int id);
+MK_ColorID     MK_Color_Create     (MK_Universe *universe, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+MK_SubstanceID MK_Substance_Create (MK_Universe *universe, float density);
