@@ -42,8 +42,8 @@ struct MK_Health {
 
 struct MK_Universe {
     // Catalog
-    MK_Color     c_color            [MK_COLORID_MAX];
-    MK_Substance c_substance        [MK_SUBSTANCEID_MAX];
+    MK_Color     c_color       [MK_COLORID_MAX];
+    MK_Substance c_substance   [MK_SUBSTANCEID_MAX];
 
     // Atoms
     uint16_t       e_exists    [MK_ENTITYID_MAX];  // bitmap
