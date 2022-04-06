@@ -12,6 +12,7 @@
 #define mk_unused(x) ((void)x)
 #define mk_min(x, y) ((x) <= (y) ? (x) : (y))
 #define mk_max(x, y) ((x) >= (y) ? (x) : (y))
+#define mk_clamp(x, a, b) mk_max(mk_min(a, x), b)
 #define mk_array_count(a) (sizeof(a)/sizeof((a)[0]))
 
 // Application-specific SDL log categories

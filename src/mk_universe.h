@@ -36,9 +36,10 @@ struct MK_Health {
 #define MK_E_COLOR     (1 << 0)
 #define MK_E_SUBSTANCE (1 << 1)
 #define MK_E_POSITION  (1 << 2)
-#define MK_E_SIZE      (1 << 3)
-#define MK_E_MASS      (1 << 4)
-#define MK_E_HEALTH    (1 << 5)
+#define MK_E_VELOCITY  (1 << 3)
+#define MK_E_SIZE      (1 << 4)
+#define MK_E_MASS      (1 << 5)
+#define MK_E_HEALTH    (1 << 6)
 
 struct MK_Universe {
     // Catalog
@@ -50,6 +51,7 @@ struct MK_Universe {
     MK_ColorID     e_color     [MK_ENTITYID_MAX];
     MK_SubstanceID e_substance [MK_ENTITYID_MAX];
     MK_Vec2        e_position  [MK_ENTITYID_MAX];
+    MK_Vec2        e_velocity  [MK_ENTITYID_MAX];
     MK_Vec2        e_size      [MK_ENTITYID_MAX];
     MK_Mass        e_mass      [MK_ENTITYID_MAX];
     MK_Health      e_health    [MK_ENTITYID_MAX];

@@ -2,6 +2,8 @@
 
 int MK_Game_Init(MK_Game *game) {
 #if _DEBUG
+    game->debug_no_gravity = true;
+    //game->debug_no_physics_simulation = true;
     //game->debug_no_collision_resolution = true;
 #endif
 
@@ -32,9 +34,9 @@ int MK_Game_WallInit(MK_Game *game, MK_Vec2 position, float w, float h, uint8_t 
 
     MK_Substance *substance = &game->universe.c_substance[substance_id];
 
-    MK_Vec2   *e_pos      = &game->universe.e_position[entity_id];
-    MK_Vec2   *e_size     = &game->universe.e_size[entity_id];
-    MK_Mass   *e_mass     = &game->universe.e_mass[entity_id];
+    MK_Vec2 *e_pos  = &game->universe.e_position[entity_id];
+    MK_Vec2 *e_size = &game->universe.e_size[entity_id];
+    MK_Mass *e_mass = &game->universe.e_mass[entity_id];
 
     game->universe.e_color[entity_id] = color_id;
     game->universe.e_substance[entity_id] = substance_id;
@@ -47,18 +49,17 @@ int MK_Game_WallInit(MK_Game *game, MK_Vec2 position, float w, float h, uint8_t 
     return MK_SUCCESS;
 }
 
-
 int MK_Game_PlayerInit(MK_Game *game, MK_PlayerSlot player_slot, MK_Vec2 position, float w, float h, uint8_t color_id, uint8_t substance_id) {
-    uint16_t flags = MK_E_COLOR | MK_E_SUBSTANCE | MK_E_POSITION | MK_E_SIZE | MK_E_MASS | MK_E_HEALTH;
+    uint16_t flags = MK_E_COLOR | MK_E_SUBSTANCE | MK_E_POSITION | MK_E_VELOCITY | MK_E_SIZE | MK_E_MASS | MK_E_HEALTH;
     MK_EntityID entity_id = 0;
     succeed_or_return_expr(MK_Universe_Create(&game->universe, &entity_id, flags));
 
     MK_Substance *substance = &game->universe.c_substance[substance_id];
 
-    MK_Vec2   *e_pos      = &game->universe.e_position[entity_id];
-    MK_Vec2   *e_size     = &game->universe.e_size[entity_id];
-    MK_Mass   *e_mass     = &game->universe.e_mass[entity_id];
-    MK_Health *e_health   = &game->universe.e_health[entity_id];
+    MK_Vec2   *e_pos    = &game->universe.e_position[entity_id];
+    MK_Vec2   *e_size   = &game->universe.e_size[entity_id];
+    MK_Mass   *e_mass   = &game->universe.e_mass[entity_id];
+    MK_Health *e_health = &game->universe.e_health[entity_id];
 
     game->universe.e_color[entity_id] = color_id;
     game->universe.e_substance[entity_id] = substance_id;
@@ -77,9 +78,31 @@ int MK_Game_PlayerInit(MK_Game *game, MK_PlayerSlot player_slot, MK_Vec2 positio
 
 int MK_Game_PlayerMove(MK_Game *game, MK_PlayerSlot player_slot, float x, float y) {
     MK_EntityID player_id = game->player_ids[player_slot];
-    MK_Vec2 *e_pos = &game->universe.e_position[player_id];
-    e_pos->x += x;
-    e_pos->y += y;
+    MK_Vec2 *e_vel = &game->universe.e_velocity[player_id];
+    e_vel->x += x * 2.0f;
+    e_vel->y += y * 2.0f;
+    return MK_SUCCESS;
+}
+
+static int MK_Game_SimulatePhysics(MK_Game *game, float dt) {
+    assert_return_zero(!game->debug_no_physics_simulation);
+
+    for (MK_EntityID e_id = 0; e_id < MK_ENTITYID_MAX; e_id++) {
+        MK_Vec2 *e_pos = &game->universe.e_position[e_id];
+        MK_Vec2 *e_vel = &game->universe.e_velocity[e_id];
+        MK_Mass *e_mas = &game->universe.e_mass[e_id];
+
+        if (!e_mas->invMass) continue; // immovable
+
+        if (!game->debug_no_gravity) {
+            e_vel->y += 500.0f * dt;
+        }
+
+        e_vel->x += -e_vel->x * 0.95f * dt;
+        e_vel->y += -e_vel->y * 0.95f * dt;
+        e_pos->x += e_vel->x * dt;
+        e_pos->y += e_vel->y * dt;
+    }
     return MK_SUCCESS;
 }
 
@@ -88,7 +111,7 @@ struct MK_Manifold {
     float y;
 };
 
-bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1, MK_Vec2 *pos2, MK_Vec2 *siz2) {
+static bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1, MK_Vec2 *pos2, MK_Vec2 *siz2) {
     float x_overlap = mk_min(
         (pos1->x + siz1->x) - pos2->x,
         (pos2->x + siz2->x) - pos1->x
@@ -118,43 +141,81 @@ bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1, MK_Vec2 
     return true;
 }
 
-int MK_Game_PositionalCorrection(MK_Game *game) {
+static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
     assert_return_zero(!game->debug_no_collision_resolution);
 
-    for (int iter = 0; iter < MK_GAME_PHYSICS_ITERATIONS; iter++) {
-        for (MK_EntityID e_id_a = 0; e_id_a < MK_ENTITYID_MAX; e_id_a++) {
-            MK_Vec2 *e_pos1 = &game->universe.e_position[e_id_a];
-            MK_Vec2 *e_siz1 = &game->universe.e_size[e_id_a];
-            MK_Mass *e_mas1 = &game->universe.e_mass[e_id_a];
-            for (MK_EntityID e_id_b = (MK_EntityID)(e_id_a + 1); e_id_b < MK_ENTITYID_MAX; e_id_b++) {
-                MK_Vec2 *e_pos2 = &game->universe.e_position[e_id_b];
-                MK_Vec2 *e_siz2 = &game->universe.e_size[e_id_b];
-                MK_Mass *e_mas2 = &game->universe.e_mass[e_id_b];
+    for (MK_EntityID e_id_a = 0; e_id_a < MK_ENTITYID_MAX; e_id_a++) {
+        MK_Vec2 *e_pos1 = &game->universe.e_position[e_id_a];
+        MK_Vec2 *e_vel1 = &game->universe.e_velocity[e_id_a];
+        MK_Vec2 *e_siz1 = &game->universe.e_size[e_id_a];
+        MK_Mass *e_mas1 = &game->universe.e_mass[e_id_a];
+        for (MK_EntityID e_id_b = (MK_EntityID)(e_id_a + 1); e_id_b < MK_ENTITYID_MAX; e_id_b++) {
+            MK_Vec2 *e_pos2 = &game->universe.e_position[e_id_b];
+            MK_Vec2 *e_vel2 = &game->universe.e_velocity[e_id_b];
+            MK_Vec2 *e_siz2 = &game->universe.e_size[e_id_b];
+            MK_Mass *e_mas2 = &game->universe.e_mass[e_id_b];
 
-                if (!e_mas1->invMass && !e_mas2->invMass) {
-                    // both are immovable
-                    continue;
-                }
+            if (!e_mas1->invMass && !e_mas2->invMass) {
+                // both are immovable
+                continue;
+            }
 
-                MK_Manifold manifold = { 0 };
+            MK_Manifold manifold = { 0 };
 
-                if (MK_Intersects(&manifold, e_pos1, e_siz1, e_pos2, e_siz2)) {
-                    if (!e_mas1->invMass) {
-                        e_pos2->x += manifold.x;
-                        e_pos2->y += manifold.y;
-                    } else if (!e_mas2->invMass) {
-                        e_pos1->x -= manifold.x;
-                        e_pos1->y -= manifold.y;
-                    } else {
-                        float alpha = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
-                        e_pos1->x -= manifold.x * alpha;
-                        e_pos1->y -= manifold.y * alpha;
-                        e_pos2->x += manifold.x * (1.0f - alpha);
-                        e_pos2->y += manifold.y * (1.0f - alpha);
+            if (MK_Intersects(&manifold, e_pos1, e_siz1, e_pos2, e_siz2)) {
+                if (!e_mas2->invMass) {
+                    e_pos1->x -= manifold.x;
+                    e_pos1->y -= manifold.y;
+                    if (manifold.x) e_vel1->x *= -0.5f;
+                    if (manifold.y) e_vel1->y *= -0.5f;
+                } else if (!e_mas1->invMass) {
+                    e_pos2->x += manifold.x;
+                    e_pos2->y += manifold.y;
+                    if (manifold.x) e_vel2->x *= -0.5f;
+                    if (manifold.y) e_vel2->y *= -0.5f;
+                } else {
+                    // Position correction
+                    float alpha1 = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
+                    float alpha2 = 1.0f - alpha1;
+                    e_pos1->x -= manifold.x * alpha1;
+                    e_pos1->y -= manifold.y * alpha1;
+                    e_pos2->x += manifold.x * alpha2;
+                    e_pos2->y += manifold.y * alpha2;
+
+                    // Collision response
+                    float m1 = e_mas1->invMass;
+                    float m2 = e_mas2->invMass;
+
+                    float v1_coef_v1 = (m1 - m2) / (m1 + m2);
+                    float v1_coef_v2 = (m2 + m2) / (m1 + m2);
+                    float v2_coef_v1 = (m1 + m1) / (m1 + m2);
+                    float v2_coef_v2 = (m1 - m2) / (m1 + m2);
+
+                    float v1_x = v1_coef_v1 * e_vel1->x + v1_coef_v2 * e_vel2->x;
+                    float v1_y = v1_coef_v1 * e_vel1->y + v1_coef_v2 * e_vel2->y;
+                    float v2_x = v2_coef_v1 * e_vel1->x - v2_coef_v2 * e_vel2->x;
+                    float v2_y = v2_coef_v1 * e_vel1->y - v2_coef_v2 * e_vel2->y;
+
+                    if (manifold.x) {
+                        e_vel1->x = v1_x * (1.0f - 0.05f * dt);
+                        e_vel2->x = v2_x * (1.0f - 0.05f * dt);
+                    }
+                    if (manifold.y) {
+                        e_vel1->y = v1_y * (1.0f - 0.05f * dt);
+                        e_vel2->y = v2_y * (1.0f - 0.05f * dt);
                     }
                 }
             }
         }
+    }
+    return MK_SUCCESS;
+}
+
+int MK_Game_Simulate(MK_Game *game, float dt) {
+    float iterDt = dt / MK_GAME_PHYSICS_ITERATIONS;
+    for (int iter = 0; iter < MK_GAME_PHYSICS_ITERATIONS; iter++) {
+        succeed_or_return_expr(MK_Game_SimulatePhysics(game, iterDt));
+        succeed_or_return_expr(MK_Game_ResolveCollisions(game, iterDt));
     }
     return MK_SUCCESS;
 }

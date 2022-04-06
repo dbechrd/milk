@@ -34,7 +34,7 @@ int MK_App_Run(MK_Context *ctx) {
         succeed_or_return_expr(MK_PollSDLEvents(ctx));
         if (ctx->quit) break;
 
-        succeed_or_return_expr(MK_Game_PositionalCorrection(&ctx->game));
+        succeed_or_return_expr(MK_Game_Simulate(&ctx->game, 1.0f / 60.0f));
 
         succeed_or_return_expr(MK_DrawScene(ctx));
 
