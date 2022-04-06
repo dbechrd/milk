@@ -1,12 +1,12 @@
 #pragma once
 #include "mk_common.h"
 
-#define MK_COLORID_MAX     UINT8_MAX
-#define MK_SUBSTANCEID_MAX UINT8_MAX
-#define MK_ENTITYID_MAX    UINT8_MAX
+#define MK_COLORID_MAX      UINT8_MAX
+#define MK_SUBSTANCEID_MAX  UINT8_MAX
+#define MK_ENTITYID_MAX     500 //UINT16_MAX
 typedef uint8_t MK_ColorID;
 typedef uint8_t MK_SubstanceID;
-typedef uint8_t MK_EntityID;
+typedef uint16_t MK_EntityID;
 
 struct MK_Substance {
     float density;

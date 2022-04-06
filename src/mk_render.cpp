@@ -39,7 +39,7 @@ int MK_DrawScene(MK_Context *ctx) {
             MK_Color *col = &ctx->game.universe.c_color[*e_col];
 
             SDL_FRect rect{ e_pos->x, e_pos->y, e_siz->x, e_siz->y };
-            if (e_mas->invMass) {
+            if (false && e_mas->invMass) {
                 succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 255, 0, 0, 127));
                 succeed_or_return_expr_sdl(SDL_RenderFillRectF(ctx->rndr, &rect));
 

@@ -2,7 +2,7 @@
 
 int MK_Game_Init(MK_Game *game) {
 #if _DEBUG
-    game->debug_no_gravity = true;
+    //game->debug_no_gravity = true;
     //game->debug_no_physics_simulation = true;
     //game->debug_no_collision_resolution = true;
 #endif
@@ -13,16 +13,31 @@ int MK_Game_Init(MK_Game *game) {
     uint8_t color_red_id   = MK_Color_Create(&game->universe, 255, 110, 110, 255);
     uint8_t color_green_id = MK_Color_Create(&game->universe, 110, 255, 110, 255);
     uint8_t color_blue_id  = MK_Color_Create(&game->universe, 110, 110, 255, 255);
+    uint8_t color_water_id = MK_Color_Create(&game->universe,  10,  10, 170, 255);
 
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10}, 1600 - 20,       10, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10, 900 - 20}, 1600 - 20,       10, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10},        10, 900 - 20, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 20,       10},        10, 900 - 20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10}, 1600 - 20,       20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {        10, 900 - 30}, 1600 - 20,       20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10},        20, 900 - 20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 30,       10},        20, 900 - 20, color_fence_id, 0));
 
-    uint8_t substance_player_id = MK_Substance_Create(&game->universe, 0.0001f);
-    succeed_or_return_expr(MK_Game_PlayerInit(game, 0, { 100.0f, 100.0f }, 100.0f, 100.0f, color_red_id,   substance_player_id));
-    succeed_or_return_expr(MK_Game_PlayerInit(game, 1, { 500.0f, 100.0f }, 200.0f, 150.0f, color_green_id, substance_player_id));
-    succeed_or_return_expr(MK_Game_PlayerInit(game, 2, { 300.0f, 200.0f }, 150.0f,  50.0f, color_blue_id,  substance_player_id));
+    uint8_t substance_water = MK_Substance_Create(&game->universe, 1.0f);
+    uint8_t substance_sink = MK_Substance_Create(&game->universe, 4.0f);
+    uint8_t substance_styrofoam = MK_Substance_Create(&game->universe, 0.3f);
+    uint8_t substance_steel = MK_Substance_Create(&game->universe, 10.0f);
+    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[0], { 100.0f, 100.0f }, 100.0f, 100.0f, color_red_id, substance_sink));
+    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { 500.0f, 100.0f }, 200.0f, 150.0f, color_green_id, substance_steel));
+    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { 300.0f, 200.0f }, 150.0f, 50.0f, color_blue_id, substance_styrofoam));
+
+    float x = 400.0f;
+    float y = 400.0f;
+    for (int i = 0; i < 20; i++) {
+        for (int j = 0; j < 20; j++) {
+            succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x, y }, 16.0f, 16.0f, color_water_id, substance_water));
+            x += 20.0f;
+        }
+        x = 400.0f;
+        y += 20.0f;
+    }
 
     return MK_SUCCESS;
 }
@@ -49,7 +64,7 @@ int MK_Game_WallInit(MK_Game *game, MK_Vec2 position, float w, float h, uint8_t 
     return MK_SUCCESS;
 }
 
-int MK_Game_PlayerInit(MK_Game *game, MK_PlayerSlot player_slot, MK_Vec2 position, float w, float h, uint8_t color_id, uint8_t substance_id) {
+int MK_Game_PhysicsBodyInit(MK_Game *game, MK_EntityID *id, MK_Vec2 position, float w, float h, uint8_t color_id, uint8_t substance_id) {
     uint16_t flags = MK_E_COLOR | MK_E_SUBSTANCE | MK_E_POSITION | MK_E_VELOCITY | MK_E_SIZE | MK_E_MASS | MK_E_HEALTH;
     MK_EntityID entity_id = 0;
     succeed_or_return_expr(MK_Universe_Create(&game->universe, &entity_id, flags));
@@ -72,15 +87,15 @@ int MK_Game_PlayerInit(MK_Game *game, MK_PlayerSlot player_slot, MK_Vec2 positio
     e_health->health = 100;
     e_health->maxHealth = 100;
 
-    game->player_ids[player_slot] = entity_id;
+    if (id) *id = entity_id;
     return MK_SUCCESS;
 }
 
 int MK_Game_PlayerMove(MK_Game *game, MK_PlayerSlot player_slot, float x, float y) {
     MK_EntityID player_id = game->player_ids[player_slot];
     MK_Vec2 *e_vel = &game->universe.e_velocity[player_id];
-    e_vel->x += x * 2.0f;
-    e_vel->y += y * 2.0f;
+    e_vel->x += x * 5.0f;
+    e_vel->y += y * 5.0f;
     return MK_SUCCESS;
 }
 
@@ -95,11 +110,11 @@ static int MK_Game_SimulatePhysics(MK_Game *game, float dt) {
         if (!e_mas->invMass) continue; // immovable
 
         if (!game->debug_no_gravity) {
-            e_vel->y += 500.0f * dt;
+            e_vel->y += 1000.0f * dt;
         }
 
-        e_vel->x += -e_vel->x * 0.95f * dt;
-        e_vel->y += -e_vel->y * 0.95f * dt;
+        e_vel->x += -e_vel->x * 0.98f * dt;
+        e_vel->y += -e_vel->y * 0.98f * dt;
         e_pos->x += e_vel->x * dt;
         e_pos->y += e_vel->y * dt;
     }
@@ -166,13 +181,13 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
                 if (!e_mas2->invMass) {
                     e_pos1->x -= manifold.x;
                     e_pos1->y -= manifold.y;
-                    if (manifold.x) e_vel1->x *= -0.5f;
-                    if (manifold.y) e_vel1->y *= -0.5f;
+                    if (manifold.x) e_vel1->x *= -(1.0f - 0.05f * dt);
+                    if (manifold.y) e_vel1->y *= -(1.0f - 0.05f * dt);
                 } else if (!e_mas1->invMass) {
                     e_pos2->x += manifold.x;
                     e_pos2->y += manifold.y;
-                    if (manifold.x) e_vel2->x *= -0.5f;
-                    if (manifold.y) e_vel2->y *= -0.5f;
+                    if (manifold.x) e_vel2->x *= -(1.0f - 0.05f * dt);
+                    if (manifold.y) e_vel2->y *= -(1.0f - 0.05f * dt);
                 } else {
                     // Position correction
                     float alpha1 = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
@@ -183,8 +198,8 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
                     e_pos2->y += manifold.y * alpha2;
 
                     // Collision response
-                    float m1 = e_mas1->invMass;
-                    float m2 = e_mas2->invMass;
+                    float m1 = 1.0f / e_mas1->invMass;
+                    float m2 = 1.0f / e_mas2->invMass;
 
                     float v1_coef_v1 = (m1 - m2) / (m1 + m2);
                     float v1_coef_v2 = (m2 + m2) / (m1 + m2);
@@ -197,12 +212,12 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
                     float v2_y = v2_coef_v1 * e_vel1->y - v2_coef_v2 * e_vel2->y;
 
                     if (manifold.x) {
-                        e_vel1->x = v1_x * (1.0f - 0.05f * dt);
-                        e_vel2->x = v2_x * (1.0f - 0.05f * dt);
+                        e_vel1->x = v1_x * (1.0f - 0.95f * dt);
+                        e_vel2->x = v2_x * (1.0f - 0.95f * dt);
                     }
                     if (manifold.y) {
-                        e_vel1->y = v1_y * (1.0f - 0.05f * dt);
-                        e_vel2->y = v2_y * (1.0f - 0.05f * dt);
+                        e_vel1->y = v1_y * (1.0f - 0.95f * dt);
+                        e_vel2->y = v2_y * (1.0f - 0.95f * dt);
                     }
                 }
             }
