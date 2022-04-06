@@ -25,6 +25,7 @@ int MK_DrawScene(MK_Context *ctx) {
 
     succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 0, 100, 0, 255));
     succeed_or_return_expr_sdl(SDL_RenderClear(ctx->rndr));
+    succeed_or_return_expr_sdl(SDL_SetRenderDrawBlendMode(ctx->rndr, SDL_BLENDMODE_BLEND));
 
     static float wobble = 0.0f;
     wobble = sinf((float)SDL_GetTicks() / 100.0f) * 10.0f;
@@ -33,17 +34,22 @@ int MK_DrawScene(MK_Context *ctx) {
         if (ctx->game.universe.e_exists[e_id]) {
             MK_Vec2 *e_pos = &ctx->game.universe.e_position[e_id];
             MK_Vec2 *e_siz = &ctx->game.universe.e_size[e_id];
+            MK_Mass *e_mas = &ctx->game.universe.e_mass[e_id];
             MK_ColorID *e_col = &ctx->game.universe.e_color[e_id];
             MK_Color *col = &ctx->game.universe.c_color[*e_col];
 
-            MK_Vec2 pos = *e_pos;
-            pos.x += wobble;
-
             SDL_FRect rect{ e_pos->x, e_pos->y, e_siz->x, e_siz->y };
-            SDL_SetRenderDrawBlendMode(ctx->rndr, SDL_BLENDMODE_BLEND);
-            succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 255, 0, 0, 127));
-            succeed_or_return_expr_sdl(SDL_RenderFillRectF(ctx->rndr, &rect));
-            succeed_or_return_expr(MK_DrawTriangle(ctx, pos, *e_siz, *col));
+            if (e_mas->invMass) {
+                succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 255, 0, 0, 127));
+                succeed_or_return_expr_sdl(SDL_RenderFillRectF(ctx->rndr, &rect));
+
+                MK_Vec2 pos = *e_pos;
+                pos.x += wobble;
+                succeed_or_return_expr(MK_DrawTriangle(ctx, pos, *e_siz, *col));
+            } else {
+                succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, col->r, col->g, col->b, col->a));
+                succeed_or_return_expr_sdl(SDL_RenderFillRectF(ctx->rndr, &rect));
+            }
         }
     }
 
