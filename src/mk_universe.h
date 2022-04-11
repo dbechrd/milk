@@ -8,6 +8,12 @@ typedef uint8_t MK_ColorID;
 typedef uint8_t MK_SubstanceID;
 typedef uint16_t MK_EntityID;
 
+#define MK_GRID_W        1600
+#define MK_CELLS_PER_ROW 32
+#define MK_CELL_W        (MK_GRID_W / MK_CELLS_PER_ROW)
+#define MK_CELL_MAX      (MK_CELLS_PER_ROW * MK_CELLS_PER_ROW)
+typedef uint16_t MK_CellIndex;
+
 struct MK_Substance {
     float density;
 };
@@ -33,6 +39,16 @@ struct MK_Health {
     int maxHealth;
 };
 
+struct MK_SpatialBounds {
+    MK_CellIndex x0, y0;
+    MK_CellIndex x1, y1;
+};
+
+struct MK_ChainEntry {
+    MK_EntityID offset;  // index of first chain entry
+    MK_EntityID length;  // length of chain
+};
+
 #define MK_E_COLOR     (1 << 0)
 #define MK_E_SUBSTANCE (1 << 1)
 #define MK_E_POSITION  (1 << 2)
@@ -47,14 +63,19 @@ struct MK_Universe {
     MK_Substance c_substance   [MK_SUBSTANCEID_MAX];
 
     // Atoms
-    uint16_t       e_exists    [MK_ENTITYID_MAX];  // bitmap
-    MK_ColorID     e_color     [MK_ENTITYID_MAX];
-    MK_SubstanceID e_substance [MK_ENTITYID_MAX];
-    MK_Vec2        e_position  [MK_ENTITYID_MAX];
-    MK_Vec2        e_velocity  [MK_ENTITYID_MAX];
-    MK_Vec2        e_size      [MK_ENTITYID_MAX];
-    MK_Mass        e_mass      [MK_ENTITYID_MAX];
-    MK_Health      e_health    [MK_ENTITYID_MAX];
+    uint16_t         e_exists    [MK_ENTITYID_MAX];  // bitmap
+    MK_ColorID       e_color     [MK_ENTITYID_MAX];
+    MK_SubstanceID   e_substance [MK_ENTITYID_MAX];
+    MK_Vec2          e_position  [MK_ENTITYID_MAX];
+    MK_Vec2          e_velocity  [MK_ENTITYID_MAX];
+    MK_Vec2          e_size      [MK_ENTITYID_MAX];
+    MK_Mass          e_mass      [MK_ENTITYID_MAX];
+    MK_Health        e_health    [MK_ENTITYID_MAX];
+    MK_SpatialBounds e_cell      [MK_ENTITYID_MAX];  // 16x16 spatial grid, 0 top left
+
+    // Spatial grid
+    MK_ChainEntry  chain_index [MK_CELL_MAX];      // cell -> chain offset
+    MK_EntityID    chain_table [MK_ENTITYID_MAX];  // contiguous, dense chain storage
 };
 
 int MK_Universe_Init   (MK_Universe *universe);

@@ -1,4 +1,5 @@
 #include "mk_game.h"
+#include <cstring>
 
 int MK_Game_Init(MK_Game *game) {
 #if _DEBUG
@@ -15,10 +16,10 @@ int MK_Game_Init(MK_Game *game) {
     uint8_t color_blue_id  = MK_Color_Create(&game->universe, 110, 110, 255, 255);
     uint8_t color_water_id = MK_Color_Create(&game->universe,  10,  10, 170, 255);
 
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10}, 1600 - 20,       20, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10, 900 - 30}, 1600 - 20,       20, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, {        10,       10},        20, 900 - 20, color_fence_id, 0));
-    succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 30,       10},        20, 900 - 20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {         0,        0}, 1600,  20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {         0, 900 - 20}, 1600,  20, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, {         0,        0},   20, 900, color_fence_id, 0));
+    succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 20,        0},   20, 900, color_fence_id, 0));
 
     uint8_t substance_water = MK_Substance_Create(&game->universe, 1.0f);
     uint8_t substance_sink = MK_Substance_Create(&game->universe, 4.0f);
@@ -91,6 +92,44 @@ int MK_Game_PhysicsBodyInit(MK_Game *game, MK_EntityID *id, MK_Vec2 position, fl
     return MK_SUCCESS;
 }
 
+static MK_CellIndex MK_Game_CalculateGridCell(MK_Game *game, float value) {
+    mk_unused(game);  // TODO: Get grid/cell size from game or game->universe?
+    MK_CellIndex grid_cell = (MK_CellIndex)floorf(value / MK_GRID_W * MK_CELLS_PER_ROW);
+    return grid_cell;
+}
+
+static void MK_Game_UpdateSpatialBounds(MK_Game *game, MK_EntityID id) {
+    MK_Vec2 *e_pos = &game->universe.e_position[id];
+    MK_Vec2 *e_siz = &game->universe.e_size[id];
+    MK_SpatialBounds *bounds = &game->universe.e_cell[id];
+    bounds->x0 = MK_Game_CalculateGridCell(game, e_pos->x);
+    bounds->y0 = MK_Game_CalculateGridCell(game, e_pos->y);
+    bounds->x1 = MK_Game_CalculateGridCell(game, e_pos->x + e_siz->x);
+    bounds->y1 = MK_Game_CalculateGridCell(game, e_pos->y + e_siz->y);
+}
+
+int MK_Game_UpdateSpatialGrid(MK_Game *game) {
+    memset(game->universe.chain_index, 0, sizeof(game->universe.chain_index));
+    memset(game->universe.chain_table, 0, sizeof(game->universe.chain_table));
+
+    for (MK_EntityID e_id = 0; e_id < MK_ENTITYID_MAX; e_id++) {
+        MK_Game_UpdateSpatialBounds(game, e_id);
+        MK_SpatialBounds *bounds = &game->universe.e_cell[e_id];
+        for (MK_CellIndex y = bounds->y0; y <= bounds->y1; y++) {
+            for (MK_CellIndex x = bounds->x0; x <= bounds->x1; x++) {
+                MK_CellIndex cell = (MK_CellIndex)(y * MK_CELLS_PER_ROW + x);
+                game->universe.chain_index[cell].length++;
+                if (x == MK_CELL_MAX) break;
+            }
+            if (y == MK_CELL_MAX) break;
+        }
+    }
+
+    // TODO: Update chain_table
+
+    return MK_SUCCESS;
+}
+
 int MK_Game_PlayerMove(MK_Game *game, MK_PlayerSlot player_slot, float x, float y) {
     MK_EntityID player_id = game->player_ids[player_slot];
     MK_Vec2 *e_vel = &game->universe.e_velocity[player_id];
@@ -104,6 +143,7 @@ static int MK_Game_SimulatePhysics(MK_Game *game, float dt) {
 
     for (MK_EntityID e_id = 0; e_id < MK_ENTITYID_MAX; e_id++) {
         MK_Vec2 *e_pos = &game->universe.e_position[e_id];
+        MK_Vec2 *e_siz = &game->universe.e_size[e_id];
         MK_Vec2 *e_vel = &game->universe.e_velocity[e_id];
         MK_Mass *e_mas = &game->universe.e_mass[e_id];
 
@@ -117,6 +157,10 @@ static int MK_Game_SimulatePhysics(MK_Game *game, float dt) {
         e_vel->y += -e_vel->y * 0.98f * dt;
         e_pos->x += e_vel->x * dt;
         e_pos->y += e_vel->y * dt;
+
+        // Hard constaint to keep things in bounds
+        e_pos->x = mk_clamp(e_pos->x, 0.0f, MK_GRID_W - e_siz->x);
+        e_pos->y = mk_clamp(e_pos->y, 0.0f, MK_GRID_W - e_siz->y);
     }
     return MK_SUCCESS;
 }
@@ -229,6 +273,7 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
 int MK_Game_Simulate(MK_Game *game, float dt) {
     float iterDt = dt / MK_GAME_PHYSICS_ITERATIONS;
     for (int iter = 0; iter < MK_GAME_PHYSICS_ITERATIONS; iter++) {
+        succeed_or_return_expr(MK_Game_UpdateSpatialGrid(game));
         succeed_or_return_expr(MK_Game_SimulatePhysics(game, iterDt));
         succeed_or_return_expr(MK_Game_ResolveCollisions(game, iterDt));
     }
