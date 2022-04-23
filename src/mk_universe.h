@@ -9,7 +9,7 @@ typedef uint8_t MK_SubstanceID;
 typedef uint16_t MK_EntityID;
 
 #define MK_GRID_W        1600
-#define MK_CELLS_PER_ROW 160
+#define MK_CELLS_PER_ROW 80 //160
 #define MK_CELL_W        (MK_GRID_W / MK_CELLS_PER_ROW)
 #define MK_CELL_MAX      (MK_CELLS_PER_ROW * MK_CELLS_PER_ROW)
 typedef uint16_t MK_CellIndex;
@@ -31,6 +31,7 @@ struct MK_Vec2 {
 };
 
 struct MK_Mass {
+    float mass;
     float invMass;  // 0 = immovable
 };
 

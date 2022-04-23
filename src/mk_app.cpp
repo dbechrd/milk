@@ -12,6 +12,9 @@ int MK_App_Init(MK_Context **ctxRef) {
     MK_Context *ctx = *ctxRef;
     assert_return_err(ctx, "Failed to allocate main app context", MK_ERR_BAD_ALLOC);
 
+    SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+
     SDL_LogSetOutputFunction(MK_LogOutputFunction, 0);
     succeed_or_return_expr_sdl(SDL_Init(SDL_INIT_EVERYTHING));
     succeed_or_return_expr(MK_RegisterCustomEvents());

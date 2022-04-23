@@ -2,7 +2,8 @@
 #include "mk_common.h"
 #include "mk_universe.h"
 
-#define MK_GAME_PHYSICS_ITERATIONS 8
+#define MK_GAME_PHYSICS_ITERATIONS 4
+#define MK_BRANCHLESS_PHYSICS 0
 
 #define MK_PLAYERSLOT_MAX UINT8_MAX
 typedef uint8_t MK_PlayerSlot;
@@ -13,6 +14,7 @@ struct MK_Game {
     bool debug_no_gravity;
     bool debug_no_physics_simulation;
     bool debug_no_collision_resolution;
+    bool debug_show_spatial_grid_cells;
 };
 
 int MK_Game_Init            (MK_Game *game);

@@ -2,7 +2,7 @@
 #include <cstring>
 
 int MK_Game_Init(MK_Game *game) {
-#if _DEBUG
+#ifdef _DEBUG
     //game->debug_no_gravity = true;
     //game->debug_no_physics_simulation = true;
     //game->debug_no_collision_resolution = true;
@@ -21,7 +21,7 @@ int MK_Game_Init(MK_Game *game) {
     succeed_or_return_expr(MK_Game_WallInit(game, {         0,        0},   20, 900, color_fence_id, 0));
     succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 20,        0},   20, 900, color_fence_id, 0));
 
-    uint8_t substance_water = MK_Substance_Create(&game->universe, 1.0f);
+    uint8_t substance_water = MK_Substance_Create(&game->universe, 2.0f);
     uint8_t substance_sink = MK_Substance_Create(&game->universe, 4.0f);
     uint8_t substance_styrofoam = MK_Substance_Create(&game->universe, 0.3f);
     uint8_t substance_steel = MK_Substance_Create(&game->universe, 10.0f);
@@ -29,7 +29,7 @@ int MK_Game_Init(MK_Game *game) {
     succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[1], { 500.0f, 100.0f }, 200.0f, 150.0f, color_green_id, substance_steel));
     succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[2], { 300.0f, 200.0f }, 150.0f, 50.0f, color_blue_id, substance_styrofoam));
 
-#if 1
+#if 0
     float x = 21.0f;
     float y = 300.0f;
     float w = 8.0f;
@@ -42,16 +42,15 @@ int MK_Game_Init(MK_Game *game) {
         y += w;
     }
 #else
-    float x = 21.0f;
-    float y = 300.0f;
-    float w = 16.0f;
-    for (int i = 0; i < 30; i++) {
-        for (int j = 0; j < 97; j++) {
-            succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x, y }, w, w, color_water_id, substance_water));
-            x += w;
+    // NOTE: All the random tiny floats are to jitter the boxes around so they don't spawn exactly aligned
+    float w = 12.0f;
+    float offset = 0.0014823f;
+    for (float y = 600.0f; y < (900.0f - 22.0f); y += w) {
+        offset = offset * (y * 1.00143f) / y;
+        for (float x = 22.0f; x < (1600.0f - 24.0f); x += w) {
+            succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x + offset, y + offset }, w, w, color_water_id, substance_water));
+            offset = offset * (x * 1.00343f) / x;
         }
-        x = 21.0f;
-        y += w;
     }
 #endif
     return MK_SUCCESS;
@@ -98,6 +97,7 @@ int MK_Game_PhysicsBodyInit(MK_Game *game, MK_EntityID *id, MK_Vec2 position, fl
     e_size->x = w;
     e_size->y = h;
     float mass = substance->density * e_size->x * e_size->y;
+    e_mass->mass = mass;
     e_mass->invMass = mass ? 1.0f / mass : 0;
     e_health->health = 100;
     e_health->maxHealth = 100;
@@ -164,7 +164,7 @@ int MK_Game_UpdateSpatialGrid(MK_Game *game) {
                 MK_CellIndex cell = (MK_CellIndex)(y * MK_CELLS_PER_ROW + x);
                 assert_abort(cell < mk_array_count(game->universe.chain_index));
                 MK_ChainEntry *entry = &game->universe.chain_index[cell];
-                MK_EntityID table_idx = entry->offset + entry->used;
+                MK_EntityID table_idx = (MK_EntityID)(entry->offset + entry->used);
                 assert_abort(table_idx < mk_array_count(game->universe.chain_table));
                 assert_abort(game->universe.chain_table[table_idx] == 0);
                 game->universe.chain_table[table_idx] = e_id;
@@ -207,8 +207,8 @@ static int MK_Game_SimulatePhysics(MK_Game *game, float dt) {
         e_pos->y += e_vel->y * dt;
 
         // Hard constaint to keep things in bounds
-        e_pos->x = mk_clamp(e_pos->x, 0.0f, MK_GRID_W - e_siz->x);
-        e_pos->y = mk_clamp(e_pos->y, 0.0f, MK_GRID_W - e_siz->y);
+        e_pos->x = mk_clamp(e_pos->x, 20.0f, 1600.0f - 20.0f - e_siz->x);
+        e_pos->y = mk_clamp(e_pos->y, 20.0f, 900.0f - 20.0f - e_siz->y);
     }
     return MK_SUCCESS;
 }
@@ -219,6 +219,7 @@ struct MK_Manifold {
 };
 
 static bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1, MK_Vec2 *pos2, MK_Vec2 *siz2) {
+#if !MK_BRANCHLESS_PHYSICS
     float x_overlap = mk_min(
         (pos1->x + siz1->x) - pos2->x,
         (pos2->x + siz2->x) - pos1->x
@@ -246,12 +247,37 @@ static bool MK_Intersects(MK_Manifold *manifold, MK_Vec2 *pos1, MK_Vec2 *siz1, M
     }
 
     return true;
+#else
+    const float x_overlap_1 = (pos1->x + siz1->x) - pos2->x;
+    const float x_overlap_2 = (pos2->x + siz2->x) - pos1->x;
+
+    const float y_overlap_1 = (pos1->y + siz1->y) - pos2->y;
+    const float y_overlap_2 = (pos2->y + siz2->y) - pos1->y;
+
+    const float x_overlap_1_less = x_overlap_1 < x_overlap_2;
+    const float x_overlap = (x_overlap_1_less * x_overlap_1) + (!x_overlap_1_less * x_overlap_2);
+
+    const float y_overlap_1_less = y_overlap_1 < y_overlap_2;
+    const float y_overlap = (y_overlap_1_less * y_overlap_1) + (!y_overlap_1_less * y_overlap_2);
+
+    const float x_less = x_overlap < y_overlap;
+    const float x2_less = pos2->x < pos1->x;
+    const float y2_less = pos2->y < pos1->y;
+
+    manifold->x = x_less * x_overlap;
+    manifold->x *= x_less * (!x2_less - x2_less);
+    manifold->y = !x_less * y_overlap;
+    manifold->y *= !x_less * (!y2_less - y2_less);
+
+    return x_overlap >= 0 && y_overlap >= 0;
+#endif
 }
 
 static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
     assert_return_zero(!game->debug_no_collision_resolution);
 
-#if 1
+    const float factor = 1.0f - 0.98f * dt;
+
     for (MK_CellIndex cell = 0; cell < MK_CELL_MAX; cell++) {
         MK_ChainEntry *entry = &game->universe.chain_index[cell];
         for (uint32_t i = 0; i < entry->length; i++) {
@@ -278,36 +304,47 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
                     if (!e_mas2->invMass) {
                         e_pos1->x -= manifold.x;
                         e_pos1->y -= manifold.y;
-                        if (manifold.x) e_vel1->x *= -(1.0f - 0.98f * dt);
-                        if (manifold.y) e_vel1->y *= -(1.0f - 0.98f * dt);
+#if !MK_BRANCHLESS_PHYSICS
+                        if (manifold.x) e_vel1->x *= -factor;
+                        if (manifold.y) e_vel1->y *= -factor;
+#else
+                        e_vel1->x *= ((!!manifold.x) * -factor) + (!manifold.x);
+                        e_vel1->y *= ((!!manifold.y) * -factor) + (!manifold.y);
+#endif
                     } else if (!e_mas1->invMass) {
                         e_pos2->x += manifold.x;
                         e_pos2->y += manifold.y;
-                        if (manifold.x) e_vel2->x *= -(1.0f - 0.98f * dt);
-                        if (manifold.y) e_vel2->y *= -(1.0f - 0.98f * dt);
+#if !MK_BRANCHLESS_PHYSICS
+                        if (manifold.x) e_vel2->x *= -factor;
+                        if (manifold.y) e_vel2->y *= -factor;
+#else
+                        e_vel2->x *= ((!!manifold.x) * -factor) + (!manifold.x);
+                        e_vel2->y *= ((!!manifold.y) * -factor) + (!manifold.y);
+#endif
                     } else {
                         // Position correction
-                        float alpha1 = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
-                        float alpha2 = 1.0f - alpha1;
+                        const float alpha1 = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
+                        const float alpha2 = 1.0f - alpha1;
                         e_pos1->x -= manifold.x * alpha1;
                         e_pos1->y -= manifold.y * alpha1;
                         e_pos2->x += manifold.x * alpha2;
                         e_pos2->y += manifold.y * alpha2;
 
                         // Collision response
-                        float m1 = 1.0f / e_mas1->invMass;
-                        float m2 = 1.0f / e_mas2->invMass;
+                        const float m1 = e_mas1->mass;
+                        const float m2 = e_mas2->mass;
+                        const float m_sum = m1 + m2;
 
-                        float v1_coef_v1 = (m1 - m2) / (m1 + m2);
-                        float v1_coef_v2 = (m2 + m2) / (m1 + m2);
-                        float v2_coef_v1 = (m1 + m1) / (m1 + m2);
-                        float v2_coef_v2 = (m1 - m2) / (m1 + m2);
+                        const float m1_sub_m2 = (m1 - m2) / m_sum;
+                        const float m1_add_m1 = (m1 + m1) / m_sum;
+                        const float m2_add_m2 = (m2 + m2) / m_sum;
 
-                        float v1_x = v1_coef_v1 * e_vel1->x + v1_coef_v2 * e_vel2->x;
-                        float v1_y = v1_coef_v1 * e_vel1->y + v1_coef_v2 * e_vel2->y;
-                        float v2_x = v2_coef_v1 * e_vel1->x - v2_coef_v2 * e_vel2->x;
-                        float v2_y = v2_coef_v1 * e_vel1->y - v2_coef_v2 * e_vel2->y;
+                        const float v1_x = m1_sub_m2 * e_vel1->x + m2_add_m2 * e_vel2->x;
+                        const float v1_y = m1_sub_m2 * e_vel1->y + m2_add_m2 * e_vel2->y;
+                        const float v2_x = m1_add_m1 * e_vel1->x - m1_sub_m2 * e_vel2->x;
+                        const float v2_y = m1_add_m1 * e_vel1->y - m1_sub_m2 * e_vel2->y;
 
+#if !MK_BRANCHLESS_PHYSICS
                         if (manifold.x) {
                             e_vel1->x = v1_x * (1.0f - 0.98f * dt);
                             e_vel2->x = v2_x * (1.0f - 0.98f * dt);
@@ -316,81 +353,17 @@ static int MK_Game_ResolveCollisions(MK_Game *game, float dt) {
                             e_vel1->y = v1_y * (1.0f - 0.98f * dt);
                             e_vel2->y = v2_y * (1.0f - 0.98f * dt);
                         }
-                    }
-                }
-            }
-        }
-    }
 #else
-    for (MK_EntityID e_id_a = 0; e_id_a < MK_ENTITYID_MAX; e_id_a++) {
-        if (!game->universe.e_exists[e_id_a]) continue;
-
-        MK_Vec2 *e_pos1 = &game->universe.e_position[e_id_a];
-        MK_Vec2 *e_vel1 = &game->universe.e_velocity[e_id_a];
-        MK_Vec2 *e_siz1 = &game->universe.e_size[e_id_a];
-        MK_Mass *e_mas1 = &game->universe.e_mass[e_id_a];
-        for (MK_EntityID e_id_b = (MK_EntityID)(e_id_a + 1); e_id_b < MK_ENTITYID_MAX; e_id_b++) {
-            if (!game->universe.e_exists[e_id_b]) continue;
-
-            MK_Vec2 *e_pos2 = &game->universe.e_position[e_id_b];
-            MK_Vec2 *e_vel2 = &game->universe.e_velocity[e_id_b];
-            MK_Vec2 *e_siz2 = &game->universe.e_size[e_id_b];
-            MK_Mass *e_mas2 = &game->universe.e_mass[e_id_b];
-
-            if (!e_mas1->invMass && !e_mas2->invMass) {
-                // both are immovable
-                continue;
-            }
-
-            MK_Manifold manifold = { 0 };
-
-            if (MK_Intersects(&manifold, e_pos1, e_siz1, e_pos2, e_siz2)) {
-                if (!e_mas2->invMass) {
-                    e_pos1->x -= manifold.x;
-                    e_pos1->y -= manifold.y;
-                    if (manifold.x) e_vel1->x *= -(1.0f - 0.98f * dt);
-                    if (manifold.y) e_vel1->y *= -(1.0f - 0.98f * dt);
-                } else if (!e_mas1->invMass) {
-                    e_pos2->x += manifold.x;
-                    e_pos2->y += manifold.y;
-                    if (manifold.x) e_vel2->x *= -(1.0f - 0.98f * dt);
-                    if (manifold.y) e_vel2->y *= -(1.0f - 0.98f * dt);
-                } else {
-                    // Position correction
-                    float alpha1 = e_mas1->invMass / (e_mas1->invMass + e_mas2->invMass);
-                    float alpha2 = 1.0f - alpha1;
-                    e_pos1->x -= manifold.x * alpha1;
-                    e_pos1->y -= manifold.y * alpha1;
-                    e_pos2->x += manifold.x * alpha2;
-                    e_pos2->y += manifold.y * alpha2;
-
-                    // Collision response
-                    float m1 = 1.0f / e_mas1->invMass;
-                    float m2 = 1.0f / e_mas2->invMass;
-
-                    float v1_coef_v1 = (m1 - m2) / (m1 + m2);
-                    float v1_coef_v2 = (m2 + m2) / (m1 + m2);
-                    float v2_coef_v1 = (m1 + m1) / (m1 + m2);
-                    float v2_coef_v2 = (m1 - m2) / (m1 + m2);
-
-                    float v1_x = v1_coef_v1 * e_vel1->x + v1_coef_v2 * e_vel2->x;
-                    float v1_y = v1_coef_v1 * e_vel1->y + v1_coef_v2 * e_vel2->y;
-                    float v2_x = v2_coef_v1 * e_vel1->x - v2_coef_v2 * e_vel2->x;
-                    float v2_y = v2_coef_v1 * e_vel1->y - v2_coef_v2 * e_vel2->y;
-
-                    if (manifold.x) {
-                        e_vel1->x = v1_x * (1.0f - 0.98f * dt);
-                        e_vel2->x = v2_x * (1.0f - 0.98f * dt);
-                    }
-                    if (manifold.y) {
-                        e_vel1->y = v1_y * (1.0f - 0.98f * dt);
-                        e_vel2->y = v2_y * (1.0f - 0.98f * dt);
+                        e_vel1->x = (!!manifold.x * v1_x * factor) + (!manifold.x * e_vel1->x);
+                        e_vel2->x = (!!manifold.x * v2_x * factor) + (!manifold.x * e_vel2->x);
+                        e_vel1->y = (!!manifold.y * v1_y * factor) + (!manifold.y * e_vel1->y);
+                        e_vel2->y = (!!manifold.y * v2_y * factor) + (!manifold.y * e_vel2->y);
+#endif
                     }
                 }
             }
         }
     }
-#endif
     return MK_SUCCESS;
 }
 
