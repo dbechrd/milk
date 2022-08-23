@@ -1,5 +1,6 @@
 #include "mk_game.h"
 #include <cstring>
+#include <cstdlib>
 
 int MK_Game_Init(MK_Game *game) {
 #ifdef _DEBUG
@@ -10,24 +11,29 @@ int MK_Game_Init(MK_Game *game) {
 
     succeed_or_return_expr(MK_Universe_Init(&game->universe));
 
-    uint8_t color_fence_id = MK_Color_Create(&game->universe,  80,  40,   0, 255);
-    uint8_t color_red_id   = MK_Color_Create(&game->universe, 255, 110, 110, 255);
-    uint8_t color_green_id = MK_Color_Create(&game->universe, 110, 255, 110, 255);
-    uint8_t color_blue_id  = MK_Color_Create(&game->universe, 110, 110, 255, 255);
-    uint8_t color_water_id = MK_Color_Create(&game->universe,  10,  10, 170, 255);
+    uint8_t color_fence_id        = MK_Color_Create(&game->universe,  80,  40,   0, 255);
+    uint8_t color_red_id          = MK_Color_Create(&game->universe, 255, 110, 110, 255);
+    uint8_t color_green_id        = MK_Color_Create(&game->universe, 110, 255, 110, 255);
+    uint8_t color_blue_id         = MK_Color_Create(&game->universe, 110, 110, 255, 255);
+    uint8_t color_water_id        = MK_Color_Create(&game->universe,  10,  10, 170, 255);
+
+    uint8_t color_milk_id         = MK_Color_Create(&game->universe, 250, 250, 250, 255);
+    uint8_t color_cocoa_powder_id = MK_Color_Create(&game->universe, 109,  81,  59, 255);
+    uint8_t color_vanilla_bean_id = MK_Color_Create(&game->universe,  80,  40,   0, 255);
 
     succeed_or_return_expr(MK_Game_WallInit(game, {         0,        0}, 1600,  20, color_fence_id, 0));
     succeed_or_return_expr(MK_Game_WallInit(game, {         0, 900 - 20}, 1600,  20, color_fence_id, 0));
     succeed_or_return_expr(MK_Game_WallInit(game, {         0,        0},   20, 900, color_fence_id, 0));
     succeed_or_return_expr(MK_Game_WallInit(game, { 1600 - 20,        0},   20, 900, color_fence_id, 0));
 
-    uint8_t substance_water = MK_Substance_Create(&game->universe, 2.0f);
-    uint8_t substance_sink = MK_Substance_Create(&game->universe, 4.0f);
-    uint8_t substance_styrofoam = MK_Substance_Create(&game->universe, 0.3f);
-    uint8_t substance_steel = MK_Substance_Create(&game->universe, 10.0f);
-    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[0], { 100.0f, 100.0f }, 100.0f, 100.0f, color_red_id, substance_sink));
-    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[1], { 500.0f, 100.0f }, 200.0f, 150.0f, color_green_id, substance_steel));
-    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[2], { 300.0f, 200.0f }, 150.0f, 50.0f, color_blue_id, substance_styrofoam));
+    uint8_t substance_milk         = MK_Substance_Create(&game->universe,  2.0f);
+    uint8_t substance_cocoa_powder = MK_Substance_Create(&game->universe,  0.3f);
+    uint8_t substance_vanilla_bean = MK_Substance_Create(&game->universe, 10.0f);
+
+    succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[0], { 100.0f, 100.0f }, 20.0f, 320.0f, color_vanilla_bean_id, substance_vanilla_bean));
+    //succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[0], { 100.0f, 100.0f }, 100.0f, 100.0f, color_red_id  , substance_sink));
+    //succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[1], { 500.0f, 100.0f }, 200.0f, 150.0f, color_green_id, substance_steel));
+    //succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, &game->player_ids[2], { 300.0f, 200.0f }, 150.0f,  50.0f, color_blue_id , substance_styrofoam));
 
 #if 0
     float x = 21.0f;
@@ -48,7 +54,12 @@ int MK_Game_Init(MK_Game *game) {
     for (float y = 600.0f; y < (900.0f - 22.0f); y += w) {
         offset = offset * (y * 1.00143f) / y;
         for (float x = 22.0f; x < (1600.0f - 24.0f); x += w) {
-            succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x + offset, y + offset }, w, w, color_water_id, substance_water));
+            const float r = rand() / (float)RAND_MAX;
+            if (r < 0.1f) {
+                succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x + offset, y + offset }, w, w, color_cocoa_powder_id, substance_cocoa_powder));
+            } else {
+                succeed_or_return_expr(MK_Game_PhysicsBodyInit(game, 0, { x + offset, y + offset }, w, w, color_milk_id, substance_milk));
+            }
             offset = offset * (x * 1.00343f) / x;
         }
     }

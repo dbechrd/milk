@@ -4,9 +4,12 @@
 #include "mk_log.h"
 #include "mk_memarena.h"
 #include "mk_render.h"
+#include <cstdlib>
 
 int MK_App_Init(MK_Context **ctxRef) {
     assert_return_guard(ctxRef);
+
+    srand(1);
 
     *ctxRef = (MK_Context *)calloc(1, sizeof(**ctxRef));
     MK_Context *ctx = *ctxRef;

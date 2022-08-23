@@ -23,7 +23,7 @@ int MK_DrawTriangle(MK_Context *ctx, MK_Vec2 pos, MK_Vec2 siz, MK_Color col) {
 int MK_DrawScene(MK_Context *ctx) {
     assert_return_guard(ctx->rndr);
 
-    succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 0, 100, 0, 255));
+    succeed_or_return_expr_sdl(SDL_SetRenderDrawColor(ctx->rndr, 20, 20, 20, 255));
     succeed_or_return_expr_sdl(SDL_RenderClear(ctx->rndr));
     succeed_or_return_expr_sdl(SDL_SetRenderDrawBlendMode(ctx->rndr, SDL_BLENDMODE_BLEND));
 
